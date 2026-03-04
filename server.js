@@ -12,7 +12,8 @@ const resend = new Resend("re_YJKnZAuD_5nD42p8eEfW1qwuLXZhFM9pN");
 // Middleware
 app.use(
   cors({
-    origin: "https://lowkey-slice-2htq.pagedrop.io/", // Update this to your actual Pagedrop domain
+    origin:
+      "https://cotizacion-front-1c4gk4o8d-zarategonzalos-projects.vercel.app/", // Update this to your actual Pagedrop domain
     methods: ["POST"],
   }),
 );
@@ -34,7 +35,6 @@ app.post(
         company_name,
         contact_name,
         whatsapp,
-        email,
         product_name,
         weight,
         amount,
@@ -65,7 +65,7 @@ app.post(
       // Prepare Email Content
       const emailData = {
         from: "onboarding@resend.dev", // Replace this with your verified domain later
-        to: email,
+        to: "zarategonzalofabian@gmail.com",
         subject: `Nueva Solicitud: ${product_name}`,
         html: `
                 <h3>Nueva Solicitud de Cotización</h3>
