@@ -1,5 +1,7 @@
-import { Resend } from "resend";
-import multer from "multer";
+const { Resend } = require("resend");
+const multer = require("multer");
+
+console.log("🟢 SERVERLESS FUNCTION: /api/send-email loaded.");
 
 // Initialize Resend
 const resend = new Resend("re_YJKnZAuD_5nD42p8eEfW1qwuLXZhFM9pN");
@@ -10,32 +12,60 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
 });
 
-export default async function handler(req, res) {
+// Export the handler function (Vercel requirement)
+module.exports = async function handler(req, res) {
+  console.log("🚀 REQUEST RECEIVED!");
+  console.log("   - Method:", req.method);
+  console.log("   - Headers:", req.headers);
+
   // 1. Verify Method
   if (req.method !== "POST") {
+    console.log(
+      "❌ ERROR: Method not allowed. Expected POST, got:",
+      req.method,
+    );
     return res
       .status(405)
       .json({ success: false, error: "Method Not Allowed" });
   }
 
+  console.log("✅ Method is POST. Proceeding...");
+
   // 2. Handle Multer Middleware
-  // Note: We run the multer middleware inside the handler for Vercel compatibility
   const uploadMiddleware = upload.single("product_image");
+
+  console.log("📤 Running Multer middleware to parse form data...");
 
   uploadMiddleware(req, res, async (err) => {
     if (err) {
-      console.error("Multer Error:", err);
+      console.error("❌ MULTER ERROR:", err);
       return res
         .status(500)
-        .json({ success: false, error: "File upload failed" });
+        .json({
+          success: false,
+          error: "File upload failed",
+          details: err.message,
+        });
+    }
+
+    console.log("✅ Multer middleware finished successfully.");
+    console.log("   - req.body keys:", Object.keys(req.body));
+    console.log("   - req.file exists:", !!req.file);
+    if (req.file) {
+      console.log("   - File details:", {
+        name: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype,
+      });
     }
 
     try {
       // 3. Extract Data
+      console.log("🔍 Extracting data from req.body...");
       const {
         company_name,
         contact_name,
-        whatsapp, // Note: 'email' is in req.body, 'whatsapp' is in req.body
+        whatsapp,
         email,
         product_name,
         weight,
@@ -43,26 +73,44 @@ export default async function handler(req, res) {
         technical_details,
       } = req.body;
 
+      console.log("✅ Extracted data:", {
+        company_name,
+        contact_name,
+        email,
+        product_name,
+        amount,
+      });
+
       // Validation
       if (!email || !product_name || !amount) {
+        console.log("❌ VALIDATION ERROR: Missing required fields.");
+        console.log("   - Email:", email);
+        console.log("   - Product Name:", product_name);
+        console.log("   - Amount:", amount);
         return res
           .status(400)
           .json({ success: false, error: "Missing required fields" });
       }
 
+      console.log("✅ Validation passed.");
+
       // Prepare Attachments
       let attachments = [];
       if (req.file) {
+        console.log("🖼️ Preparing image attachment...");
         const base64Image = req.file.buffer.toString("base64");
-
         attachments.push({
           filename: req.file.originalname,
           content: base64Image,
           content_type: req.file.mimetype,
         });
+        console.log("✅ Attachment prepared.");
+      } else {
+        console.log("ℹ️ No image file attached to this request.");
       }
 
       // Prepare Email Content
+      console.log("📧 Preparing email content for Resend...");
       const emailData = {
         from: "onboarding@resend.dev",
         to: "zarategonzalofabian@gmail.com",
@@ -78,24 +126,39 @@ export default async function handler(req, res) {
         `,
         attachments,
       };
+      console.log("✅ Email content prepared.");
 
       // 4. Send Email via Resend
+      console.log("📬 Calling Resend API to send email...");
       const { data, error } = await resend.emails.send(emailData);
 
       if (error) {
-        console.error("Resend Error:", error);
+        console.error("❌ RESEND API ERROR:", error);
         return res.status(500).json({ success: false, error: error.message });
       }
 
+      console.log("✅ Resend API call successful!");
+      console.log("   - Resend Response Data:", data);
+
       // 5. Send Success Response
+      console.log("🎉 SUCCESS: Sending final response to frontend.");
       res.json({
         success: true,
         message: "Email sent successfully",
         data: data,
       });
     } catch (err) {
-      console.error("Server Error:", err);
-      res.status(500).json({ success: false, error: "Server internal error" });
+      console.error(
+        "💥 CATCH BLOCK: A critical error occurred in the try block:",
+        err,
+      );
+      res
+        .status(500)
+        .json({
+          success: false,
+          error: "Server internal error",
+          details: err.message,
+        });
     }
   });
-}
+};
