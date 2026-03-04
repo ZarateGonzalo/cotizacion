@@ -6,6 +6,16 @@ console.log("🟢 SERVERLESS FUNCTION: /api/send-email loaded.");
 // Initialize Resend
 const resend = new Resend("re_YJKnZAuD_5nD42p8eEfW1qwuLXZhFM9pN");
 
+// --- INICIO: FIX PARA CORS ---
+// Define las cabeceras CORS para que el navegador permita la respuesta
+const corsHeaders = {
+  "Access-Control-Allow-Origin":
+    "https://cotizacion-front-1c4gk4o8d-zarategonzalos-projects.vercel.app",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+// --- FIN: FIX PARA CORS ---
+
 // Configure Multer to store files in memory
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -16,7 +26,15 @@ const upload = multer({
 module.exports = async function handler(req, res) {
   console.log("🚀 REQUEST RECEIVED!");
   console.log("   - Method:", req.method);
-  console.log("   - Headers:", req.headers);
+
+  // --- INICIO: FIX PARA CORS (Manejo de la petición preflight OPTIONS) ---
+  // El navegador envía una petición OPTIONS antes de la real para verificar permisos
+  if (req.method === "OPTIONS") {
+    console.log("ℹ️ Handling preflight OPTIONS request.");
+    res.writeHead(200, corsHeaders).end();
+    return;
+  }
+  // --- FIN: FIX PARA CORS ---
 
   // 1. Verify Method
   if (req.method !== "POST") {
@@ -24,9 +42,10 @@ module.exports = async function handler(req, res) {
       "❌ ERROR: Method not allowed. Expected POST, got:",
       req.method,
     );
-    return res
-      .status(405)
-      .json({ success: false, error: "Method Not Allowed" });
+    res
+      .writeHead(405, corsHeaders)
+      .end(JSON.stringify({ success: false, error: "Method Not Allowed" }));
+    return;
   }
 
   console.log("✅ Method is POST. Proceeding...");
@@ -39,13 +58,14 @@ module.exports = async function handler(req, res) {
   uploadMiddleware(req, res, async (err) => {
     if (err) {
       console.error("❌ MULTER ERROR:", err);
-      return res
-        .status(500)
-        .json({
+      res.writeHead(500, corsHeaders).end(
+        JSON.stringify({
           success: false,
           error: "File upload failed",
           details: err.message,
-        });
+        }),
+      );
+      return;
     }
 
     console.log("✅ Multer middleware finished successfully.");
@@ -87,9 +107,13 @@ module.exports = async function handler(req, res) {
         console.log("   - Email:", email);
         console.log("   - Product Name:", product_name);
         console.log("   - Amount:", amount);
-        return res
-          .status(400)
-          .json({ success: false, error: "Missing required fields" });
+        res.writeHead(400, corsHeaders).end(
+          JSON.stringify({
+            success: false,
+            error: "Missing required fields",
+          }),
+        );
+        return;
       }
 
       console.log("✅ Validation passed.");
@@ -134,7 +158,10 @@ module.exports = async function handler(req, res) {
 
       if (error) {
         console.error("❌ RESEND API ERROR:", error);
-        return res.status(500).json({ success: false, error: error.message });
+        res
+          .writeHead(500, corsHeaders)
+          .end(JSON.stringify({ success: false, error: error.message }));
+        return;
       }
 
       console.log("✅ Resend API call successful!");
@@ -142,23 +169,26 @@ module.exports = async function handler(req, res) {
 
       // 5. Send Success Response
       console.log("🎉 SUCCESS: Sending final response to frontend.");
-      res.json({
-        success: true,
-        message: "Email sent successfully",
-        data: data,
-      });
+      res.writeHead(200, corsHeaders).end(
+        JSON.stringify({
+          // <-- ¡AQUÍ ESTÁ EL CAMBIO CLAVE!
+          success: true,
+          message: "Email sent successfully",
+          data: data,
+        }),
+      );
     } catch (err) {
       console.error(
         "💥 CATCH BLOCK: A critical error occurred in the try block:",
         err,
       );
-      res
-        .status(500)
-        .json({
+      res.writeHead(500, corsHeaders).end(
+        JSON.stringify({
           success: false,
           error: "Server internal error",
           details: err.message,
-        });
+        }),
+      );
     }
   });
 };
