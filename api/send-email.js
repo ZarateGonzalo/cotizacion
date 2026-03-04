@@ -85,10 +85,9 @@ module.exports = async function handler(req, res) {
       const {
         company_name,
         contact_name,
-        whatsapp,
         email,
+        whatsapp,
         product_name,
-        weight,
         amount,
         technical_details,
       } = req.body;
@@ -144,8 +143,9 @@ module.exports = async function handler(req, res) {
           <p><strong>Empresa:</strong> ${company_name}</p>
           <p><strong>Contacto:</strong> ${contact_name}</p>
           <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Whatsapp:</strong> ${whatsapp}</p>
           <p><strong>Producto:</strong> ${product_name}</p>
-          <p><strong>Cantidad:</strong> ${amount} (${weight} kg)</p>
+          <p><strong>Cantidad:</strong> (${amount} kg)</p>
           ${technical_details ? `<p><strong>Detalles:</strong> ${technical_details}</p>` : ""}
         `,
         attachments,
