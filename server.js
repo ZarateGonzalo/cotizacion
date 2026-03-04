@@ -12,7 +12,7 @@ const resend = new Resend("re_YJKnZAuD_5nD42p8eEfW1qwuLXZhFM9pN");
 // Middleware
 app.use(
   cors({
-    origin: "https://highkey-key-f4ed.pagedrop.io", // Update this to your actual Pagedrop domain
+    origin: "https://lowkey-slice-2htq.pagedrop.io/", // Update this to your actual Pagedrop domain
     methods: ["POST"],
   }),
 );
