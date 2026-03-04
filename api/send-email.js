@@ -1,40 +1,42 @@
-const express = require("express");
-const cors = require("cors");
-const { Resend } = require("resend");
-const multer = require("multer");
+import { Resend } from "resend";
+import multer from "multer";
 
-const app = express();
-const PORT = 3000;
-
-// Initialize Resend with your API Key
+// Initialize Resend
 const resend = new Resend("re_YJKnZAuD_5nD42p8eEfW1qwuLXZhFM9pN");
 
-// Middleware
-app.use(
-  cors({
-    origin:
-      "https://cotizacion-front-1c4gk4o8d-zarategonzalos-projects.vercel.app/", // Update this to your actual Pagedrop domain
-    methods: ["POST"],
-  }),
-);
-app.use(express.json());
-
-// Configure Multer to store files in memory (so we can convert them to base64 immediately)
+// Configure Multer to store files in memory
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
 });
 
-// POST Route to handle the form submission
-app.post(
-  "/api/send-email",
-  upload.single("product_image"),
-  async (req, res) => {
+export default async function handler(req, res) {
+  // 1. Verify Method
+  if (req.method !== "POST") {
+    return res
+      .status(405)
+      .json({ success: false, error: "Method Not Allowed" });
+  }
+
+  // 2. Handle Multer Middleware
+  // Note: We run the multer middleware inside the handler for Vercel compatibility
+  const uploadMiddleware = upload.single("product_image");
+
+  uploadMiddleware(req, res, async (err) => {
+    if (err) {
+      console.error("Multer Error:", err);
+      return res
+        .status(500)
+        .json({ success: false, error: "File upload failed" });
+    }
+
     try {
+      // 3. Extract Data
       const {
         company_name,
         contact_name,
-        whatsapp,
+        whatsapp, // Note: 'email' is in req.body, 'whatsapp' is in req.body
+        email,
         product_name,
         weight,
         amount,
@@ -50,9 +52,7 @@ app.post(
 
       // Prepare Attachments
       let attachments = [];
-
       if (req.file) {
-        // Convert the file buffer to a Base64 string
         const base64Image = req.file.buffer.toString("base64");
 
         attachments.push({
@@ -64,22 +64,22 @@ app.post(
 
       // Prepare Email Content
       const emailData = {
-        from: "onboarding@resend.dev", // Replace this with your verified domain later
+        from: "onboarding@resend.dev",
         to: "zarategonzalofabian@gmail.com",
         subject: `Nueva Solicitud: ${product_name}`,
         html: `
-                <h3>Nueva Solicitud de Cotización</h3>
-                <p><strong>Empresa:</strong> ${company_name}</p>
-                <p><strong>Contacto:</strong> ${contact_name}</p>
-                <p><strong>Email:</strong> ${email}</p>
-                <p><strong>Producto:</strong> ${product_name}</p>
-                <p><strong>Cantidad:</strong> ${amount} (${weight} kg)</p>
-                ${technical_details ? `<p><strong>Detalles:</strong> ${technical_details}</p>` : ""}
-            `,
+          <h3>Nueva Solicitud de Cotización</h3>
+          <p><strong>Empresa:</strong> ${company_name}</p>
+          <p><strong>Contacto:</strong> ${contact_name}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Producto:</strong> ${product_name}</p>
+          <p><strong>Cantidad:</strong> ${amount} (${weight} kg)</p>
+          ${technical_details ? `<p><strong>Detalles:</strong> ${technical_details}</p>` : ""}
+        `,
         attachments,
       };
 
-      // Send Email via Resend
+      // 4. Send Email via Resend
       const { data, error } = await resend.emails.send(emailData);
 
       if (error) {
@@ -87,6 +87,7 @@ app.post(
         return res.status(500).json({ success: false, error: error.message });
       }
 
+      // 5. Send Success Response
       res.json({
         success: true,
         message: "Email sent successfully",
@@ -96,9 +97,5 @@ app.post(
       console.error("Server Error:", err);
       res.status(500).json({ success: false, error: "Server internal error" });
     }
-  },
-);
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+  });
+}
