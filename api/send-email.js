@@ -9,8 +9,7 @@ const resend = new Resend("re_YJKnZAuD_5nD42p8eEfW1qwuLXZhFM9pN");
 // --- INICIO: FIX PARA CORS ---
 // Define las cabeceras CORS para que el navegador permita la respuesta
 const corsHeaders = {
-  "Access-Control-Allow-Origin":
-    "https://cotizacion-front-1c4gk4o8d-zarategonzalos-projects.vercel.app",
+  "Access-Control-Allow-Origin": "https://cotizacion-front.vercel.app/",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
